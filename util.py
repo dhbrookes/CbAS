@@ -264,19 +264,19 @@ def partition_data(X, y, percentile=40, train_size=1000, random_state=1, return_
     assert (percentile*0.01 * len(y) >= train_size)
     y_percentile = np.percentile(y, percentile)
     idx = np.where(y < y_percentile)[0]
+#     print(y_percentile)
     rand_idx = np.random.choice(idx, size=train_size, replace=False)
     X_train = X[rand_idx]
     y_train = y[rand_idx]
     if return_test:
-        test_idx = [i for i in range(len(y)) if i not in rand_idx]
+        test_idx = [i for i in idx if i not in rand_idx]
         X_test = X[test_idx]
         y_test = y[test_idx]
         return X_train, y_train, X_test, y_test
     else:
         return X_train, y_train
 
-
-def get_experimental_X_y(random_state=1, train_size=5000, return_test=False):
+def get_experimental_X_y(random_state=1, train_size=5000, return_test=False, return_all=False):
     """Partition and add noise"""
     df = pd.read_csv('data/gfp_data.csv')
     X,_ = get_gfp_X_y_aa(df, large_only=True, ignore_stops=True)
@@ -300,7 +300,7 @@ def get_gfp_X_y_aa(data_df, large_only=False, ignore_stops=True, return_str=Fals
     if large_only:
         idx = data_df.loc[(data_df['medianBrightness'] > data_df['medianBrightness'].mean())].index
     else:
-        idx = seqs.index
+        idx = data_df.index
     data_df = data_df.loc[idx]
     
     if ignore_stops:

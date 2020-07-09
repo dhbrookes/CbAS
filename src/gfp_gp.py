@@ -4,6 +4,12 @@ warnings.filterwarnings("ignore")
 import numpy as np
 from util import AA, AA_IDX, BLOSUM
 
+
+"""
+This module contains coding for training a Gaussian Process Regression
+model on the Sarkisyan (2016) data set.
+"""
+
 class SequenceGP(object):
     
     def __init__(self, load=False, X_train=None, y_train=None, 

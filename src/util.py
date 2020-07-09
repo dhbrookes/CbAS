@@ -38,11 +38,54 @@ BLOSUM = np.array([
 [0.9365,0.4201,0.3690,0.3365,0.7558,0.4668,0.4289,0.3370,0.3394,2.4175,1.3142,0.4565,1.2689,0.7451,0.4431,0.5652,0.9809,0.3745,0.6580,3.6922]]
 )
 
+def build_pred_model(n_tokens=4, seq_length=33, enc1_units=50):
+    """Returns a keras model for predicting a scalar from sequences"""
+    x = Input(shape=(seq_length, n_tokens))
+    h = Flatten()(x)
+    h = Dense(enc1_units, activation='elu')(h)
+    out = Dense(1)(h)
+
+    model = Model(inputs=[x], outputs=[out])
+    return model
+
+
+def build_vae(latent_dim, n_tokens=4, seq_length=33, enc1_units=50, eps_std=1., ):
+    """Returns a compiled VAE model"""
+    model = SimpleVAE(input_shape=(seq_length, n_tokens,),
+                      latent_dim=latent_dim)
+
+    # set encoder layers:
+    model.encoderLayers_ = [
+        Dense(units=enc1_units, activation='elu', name='e2'),
+    ]
+
+    # set decoder layers:
+    model.decoderLayers_ = [
+        Dense(units=enc1_units, activation='elu', name='d1'),
+        Dense(units=n_tokens * seq_length, name='d3'),
+        Reshape((seq_length, n_tokens), name='d4'),
+        Dense(units=n_tokens, activation='softmax', name='d5'),
+    ]
+
+    # build models:
+    kl_scale = K.variable(1.)
+    model.build_encoder()
+    model.build_decoder(decode_activation='softmax')
+    model.build_vae(epsilon_std=eps_std, kl_scale=kl_scale)
+
+    losses = [summed_categorical_crossentropy, identity_loss]
+
+    model.compile(optimizer='adam',
+                  loss=losses)
+
+    return model
 
 
 def build_pred_vae_model(latent_dim, n_tokens=4, seq_length=33, enc1_units=50,
                          eps_std=1., pred_var=0.1,
                          learn_uncertainty=False):
+    """Returns a compiled VAE that makes supervised predictions from its latent
+    space. For use with the Gomez-Bombarelli optimization method"""
     model = SimpleSupervisedVAE(input_shape=(seq_length, n_tokens,),
                                 latent_dim=latent_dim,
                                 pred_dim=1,
@@ -87,58 +130,17 @@ def build_pred_vae_model(latent_dim, n_tokens=4, seq_length=33, enc1_units=50,
     return model
 
 
-def build_pred_model(n_tokens=4, seq_length=33, enc1_units=50, pred_var=0.1):
-    x = Input(shape=(seq_length, n_tokens))
-    h = Flatten()(x)
-    h = Dense(enc1_units, activation='elu')(h)
-    h = Dense(enc1_units, activation='elu')(h)
-    out = Dense(1)(h)
-
-    model = Model(inputs=[x], outputs=[out])
-    model.compile(optimizer='adam',
-                  loss=[get_gaussian_nll(pred_var)],
-                  metrics=['mse'])
-    return model
-
-def build_vae(latent_dim, n_tokens=4, seq_length=33, enc1_units=50, eps_std=1., ):
-    model = SimpleVAE(input_shape=(seq_length, n_tokens,),
-                      latent_dim=latent_dim)
-
-    # set encoder layers:
-    model.encoderLayers_ = [
-        Dense(units=enc1_units, activation='elu', name='e2'),
-    ]
-
-    # set decoder layers:
-    model.decoderLayers_ = [
-        Dense(units=enc1_units, activation='elu', name='d1'),
-        Dense(units=n_tokens * seq_length, name='d3'),
-        Reshape((seq_length, n_tokens), name='d4'),
-        Dense(units=n_tokens, activation='softmax', name='d5'),
-    ]
-
-    # build models:
-    kl_scale = K.variable(1.)
-    model.build_encoder()
-    model.build_decoder(decode_activation='softmax')
-    model.build_vae(epsilon_std=eps_std, kl_scale=kl_scale)
-
-    losses = [summed_categorical_crossentropy, identity_loss]
-
-    model.compile(optimizer='adam',
-                  loss=losses)
-
-    return model
-
 def get_gfp_base_seq():
-    lines = open("/global/homes/d/dbrookes/design_icml/data/avGFP_reference_sequence.fa").readlines()
+    """Returns the wild type GFP sequence"""
+    lines = open("../data/avGFP_reference_sequence.fa").readlines()
     seq = lines[1].strip()
     return seq
     
 
 def read_gfp_data(path=None, df_save_file=None):
+    """Reads the GFP brightness data in a pandas DataFrame"""
     if path is None:
-        path = "/global/homes/d/dbrookes/design_icml/data/nucleotide_genotypes_to_brightness.tsv"
+        path = "../data/nucleotide_genotypes_to_brightness.tsv"
     f = open(path)
     base_seq = get_base_seq()
     mod = list(base_seq)
@@ -169,7 +171,12 @@ def read_gfp_data(path=None, df_save_file=None):
         df.to_csv(df_save_file)
     return df
 
+
 def convert_mutations_to_sequence(base_seq, mutations):
+    """
+    Given the wild type sequence and a formatted mtuation string, returns
+    the mutated sequence
+    """
     new_seq = list(base_seq)
     n = 0
     for m in mutations:
@@ -186,6 +193,7 @@ def convert_mutations_to_sequence(base_seq, mutations):
     new_seq = "".join(new_seq)
     return new_seq, n
 
+
 def one_hot_encode_dna(dna_str, pad=None, base_order='ATCG'):
     """ Convert length M string into M x 4 tokenized array """
     dna_str = dna_str.upper()
@@ -199,14 +207,21 @@ def one_hot_encode_dna(dna_str, pad=None, base_order='ATCG'):
         dna_arr[i, idx] = 1
     return dna_arr
 
+
 def one_hot_encode_aa(aa_str, pad=None):
+    """Returns a one hot encoded amino acid sequence"""
     M = len(aa_str)
     aa_arr = np.zeros((M, 20), dtype=int)
     for i in range(M):
         aa_arr[i, AA_IDX[aa_str[i]]] = 1
     return aa_arr
 
+
 def convert_aas_to_idx_array(X_aa):
+    """
+    Converts a list of amino acid sequences into an array of amino acid indices from AA_IDX.
+    E.g. the amino sequence ARN becomes a row containing [1, 2, 3]
+    """
     N = len(X_aa)
     M = len(X_aa[0])
     X_aa_idx = np.zeros((N, M),dtype=int)
@@ -216,7 +231,11 @@ def convert_aas_to_idx_array(X_aa):
 
     return X_aa_idx
 
+
 def convert_idx_array_to_aas(X_aa):
+    """Converts an array containing indices of amino acids into the 
+    corresponding string amino acid sequences. E.g. a row with [1, 2, 3] 
+    becomes the sequence ARN."""
     N = len(X_aa)
     M = len(X_aa[0])
     X_aa_str = [["A"] * M] * N
@@ -228,13 +247,18 @@ def convert_idx_array_to_aas(X_aa):
 
 
 def get_argmax(Xt_p):
+    """Given a categorical probability distribution specifying the probability
+    of amino acids at each position in a sequence, returns the most probable sequence"""
     Xt_argmax = np.zeros_like(Xt_p)
     Xt_argmax[np.arange(Xt_p.shape[0]).reshape(Xt_p.shape[0], 1),
                      np.arange(Xt_p.shape[1]).reshape(1, Xt_p.shape[1]),
                      np.argmax(Xt_p, axis=-1)] = 1
     return Xt_argmax
 
+
 def get_samples(Xt_p):
+    """Samples from a categorical probability distribution specifying the probability
+    of amino acids at each position in a sequence"""
     Xt_sampled = np.zeros_like(Xt_p)
     for i in range(Xt_p.shape[0]):
         for j in range(Xt_p.shape[1]):
@@ -243,16 +267,19 @@ def get_samples(Xt_p):
             Xt_sampled[i, j, k] = 1.
     return Xt_sampled
 
+
 def get_balaji_predictions(preds, Xt):
+    """Given a set of predictors built according to the methods in 
+    the Balaji Lakshminarayanan paper 'Simple and scalable predictive 
+    uncertainty estimation using deep ensembles' (2017), returns the mean and
+    variance of the total prediction."""
     M = len(preds)
     N = Xt.shape[0]
     means = np.zeros((M, N))
     variances = np.zeros((M, N))
     for m in range(M):
         y_pred = preds[m].predict(Xt)
-#         print(y_pred)
         means[m, :] = y_pred[:, 0]
-#         print(y_pred[:, 0].shape, y_pred[:, 1].shape, K.softplus(y_pred[:, 1]).shape, )
         variances[m, :] = np.log(1+np.exp(y_pred[:, 1])) + 1e-6
     mu_star = np.mean(means, axis=0)
     var_star = (1/M) * (np.sum(variances, axis=0) + np.sum(means**2, axis=0)) - mu_star**2
@@ -260,11 +287,11 @@ def get_balaji_predictions(preds, Xt):
 
 
 def partition_data(X, y, percentile=40, train_size=1000, random_state=1, return_test=False):
+    """Partition a (X, y) data set by a percentile of the y values"""
     np.random.seed(random_state)
     assert (percentile*0.01 * len(y) >= train_size)
     y_percentile = np.percentile(y, percentile)
     idx = np.where(y < y_percentile)[0]
-#     print(y_percentile)
     rand_idx = np.random.choice(idx, size=train_size, replace=False)
     X_train = X[rand_idx]
     y_train = y[rand_idx]
@@ -276,11 +303,14 @@ def partition_data(X, y, percentile=40, train_size=1000, random_state=1, return_
     else:
         return X_train, y_train
 
+    
 def get_experimental_X_y(random_state=1, train_size=5000, return_test=False, return_all=False):
-    """Partition and add noise"""
+    """For the GFP testing experiments. Loads the ground truth data (i.e. predictions from the GP model
+    we use as the ground truth), partitions it such that we only observe values below the 20th percentile
+    and adds measurement noise"""
     df = pd.read_csv('data/gfp_data.csv')
     X,_ = get_gfp_X_y_aa(df, large_only=True, ignore_stops=True)
-    y_gt = np.load("data/gfp_gt_evals.npy")
+    y_gt = np.load("../data/gfp_gt_evals.npy")
     if return_test:
         X_train, gt_train, X_test, gt_test = partition_data(X, y_gt, percentile=20, train_size=train_size, random_state=random_state, return_test=return_test)
         np.random.seed(random_state)
@@ -297,6 +327,10 @@ def get_experimental_X_y(random_state=1, train_size=5000, return_test=False, ret
 
 
 def get_gfp_X_y_aa(data_df, large_only=False, ignore_stops=True, return_str=False):
+    """
+    Converts the raw GFP data to a set of X and y values that are ready to use
+    in a model
+    """
     if large_only:
         idx = data_df.loc[(data_df['medianBrightness'] > data_df['medianBrightness'].mean())].index
     else:

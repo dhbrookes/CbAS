@@ -1,5 +1,6 @@
 import numpy as np
 
+"""Module containing tools for manipulating biological sequences"""
 
 class SequenceTools(object):
     dna2gray_ = {'c': (0, 0), 't': (1, 0), 'g': (1, 1), 'a': (0, 1)}

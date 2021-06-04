@@ -1,11 +1,15 @@
 import warnings
 warnings.filterwarnings("ignore")
 import numpy as np
-import keras.callbacks
-import keras.utils.generic_utils
-import keras.models
+from tensorflow import keras
+from tensorflow.keras import callbacks
+# from tensorflow.keras.utils import generic_utils
+from tensorflow.keras import models
+# import keras.callbacks
+# import keras.utils.generic_utils
+# import keras.models
 import json
-import keras.backend as K
+from tensorflow.python.keras import backend as K
 import tensorflow as tf
 
 import util
@@ -143,7 +147,7 @@ def run_experimental_weighted_ml(it, repeats=3):
     ground_truth = gfp_gp.SequenceGP(load=True, load_prefix="data/gfp_gp")
     
     loss = neg_log_likelihood
-    keras.utils.generic_utils.get_custom_objects().update({"neg_log_likelihood": loss})
+    keras.utils.get_custom_objects().update({"neg_log_likelihood": loss})
     oracles = [keras.models.load_model("../models/oracle_%i%s.h5" % (i, oracle_suffix)) for i in range(num_models)]
     
     test_kwargs = [
@@ -217,7 +221,7 @@ def run_killoran(killoran=True):
         
         ground_truth = gfp_gp.SequenceGP(load=True, load_prefix="data/gfp_gp")
         loss = losses.neg_log_likelihood
-        keras.utils.generic_utils.get_custom_objects().update({"neg_log_likelihood": loss})
+        keras.utils.get_custom_objects().update({"neg_log_likelihood": loss})
         oracle_suffix = '_%s_%i_%i' % (train_size_str, num_models, RANDOM_STATE)
         
         sess = tf.Session(graph=tf.get_default_graph())

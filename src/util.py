@@ -1,10 +1,10 @@
 import itertools
-
+import tensorflow as tf
 import numpy as np
 import pandas as pd
-from keras import backend as K
-from keras.layers import Input, Dense, Flatten, Reshape
-from keras.models import Model
+from tensorflow.python.keras import backend as K
+from tensorflow.keras.layers import Input, Dense, Flatten, Reshape
+from tensorflow.keras.models import Model
 from collections import Counter
 
 from losses import get_gaussian_nll, summed_categorical_crossentropy, zero_loss, get_gaussian_nll_for_log_pred, identity_loss
@@ -308,7 +308,7 @@ def get_experimental_X_y(random_state=1, train_size=5000, return_test=False, ret
     """For the GFP testing experiments. Loads the ground truth data (i.e. predictions from the GP model
     we use as the ground truth), partitions it such that we only observe values below the 20th percentile
     and adds measurement noise"""
-    df = pd.read_csv('data/gfp_data.csv')
+    df = pd.read_csv('../data/gfp_data.csv')
     X,_ = get_gfp_X_y_aa(df, large_only=True, ignore_stops=True)
     y_gt = np.load("../data/gfp_gt_evals.npy")
     if return_test:

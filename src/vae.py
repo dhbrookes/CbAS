@@ -1,10 +1,12 @@
-import keras
 import numpy as np
-from keras import backend as K
-from keras.callbacks import Callback
-from keras.layers import Layer, Input, Lambda, Add, Multiply, Dense, Flatten, Concatenate, Reshape, Conv1D
-from keras.models import Model
-from keras import layers
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.python.keras import backend as K
+from tensorflow.keras.callbacks import Callback
+from tensorflow.keras.layers import Layer, Input, Lambda, Add, Multiply, Dense, Flatten, Concatenate, Reshape, Conv1D
+from tensorflow.keras.models import Model
+from tensorflow.keras import layers
+tf.compat.v1.disable_v2_behavior()
 
 """
 Module for extendable variational autoencoders.

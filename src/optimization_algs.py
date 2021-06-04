@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import scipy.stats
 import util
-import keras.backend as K
+from tensorflow.python.keras import backend as K
 import tensorflow_probability as tfp
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C

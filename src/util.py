@@ -43,7 +43,7 @@ def build_pred_model(n_tokens=4, seq_length=33, enc1_units=50):
     x = Input(shape=(seq_length, n_tokens))
     h = Flatten()(x)
     h = Dense(enc1_units, activation='elu')(h)
-    out = Dense(1)(h)
+    out = Dense(2)(h)
 
     model = Model(inputs=[x], outputs=[out])
     return model
